@@ -188,7 +188,7 @@ Upload a cdrom image
 oc project openshift-virtualization-os-images
 virtctl image-upload dv win-iso-w2k16 \
   --image-path=/Users/michaelcourcy/Downloads/kubevirt2/window-server-evaluation-2016.iso \
-  --uploadproxy-url=<your-upload-proxy-url> --insecure  --size=7Gi
+  --uploadproxy-url=cdi-uploadproxy-openshift-cnv.apps.bm3.url.com --insecure  --size=7Gi
 ```
 
 Note: iso files can be downloaded from the Microsoft website.
