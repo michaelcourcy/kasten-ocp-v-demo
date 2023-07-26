@@ -62,7 +62,7 @@ Video :
 
 ## Scenario "VM Migration" 
 
-[Vm Migration](./images/vm-migration.png)
+![Vm Migration](./images/vm-migration.png)
 
 Create this templates for creating VM windows and VM Fedora that has volume mode in filesystem, this is a requirement for 
 Kasten being able to snapshot and export your machines. If you absolutely need to stay in block mode then you can still snapshot but not export. 
