@@ -62,6 +62,8 @@ Video :
 
 ## Scenario "VM Migration" 
 
+We're going to replace/mix pod by/with VMs in order to execute a VM Micgration scenario between openshift cluster.
+
 ![Vm Migration](./images/vm-migration.png)
 
 To create templates for  VM windows and VM Fedora that has volume mode in filesystem, execute : 
