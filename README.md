@@ -45,8 +45,8 @@ helm install pacman pacman/pacman -n pacman --set route.create=true --set mongod
 Then we proceed the migration with a transformation on the route : 
 ```
 /spec/host
-([a-zA-Z0-9-.]*)\.apps\.gbocp3rdtest2\.fw.garanti\.com\.tr
-$1.apps.gbocp3rdtest1.fw.garanti.com.tr
+([a-zA-Z0-9-.]*)\.apps\.bm3\.url\.com
+$1.apps.bm2.url.com
 ```
 
 Video : 
