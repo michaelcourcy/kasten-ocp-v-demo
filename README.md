@@ -193,7 +193,7 @@ virtctl image-upload dv win-iso-w2k16 \
 
 Note: iso files can be downloaded from the Microsoft website.
 
-Select the windows2k16-server-medium-kio template in the catalog and create the machine and execute it.
+Select the windows2k16-server-medium-kio template in the catalog and create the machine.
 
 Connect to the machine 
 
