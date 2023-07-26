@@ -64,14 +64,16 @@ Video :
 
 ![Vm Migration](./images/vm-migration.png)
 
-Create this templates for creating VM windows and VM Fedora that has volume mode in filesystem, this is a requirement for 
-Kasten being able to snapshot and export your machines. If you absolutely need to stay in block mode then you can still snapshot but not export. 
-
-Kasten is actively working on supporting block mode for export, hence this requirement may not be true anymore at the moment you read this document.
-
+To create templates for  VM windows and VM Fedora that has volume mode in filesystem, execute : 
 ```
 oc create -f templates/
 ```
+this is a requirement for Kasten being able to snapshot and export the machines. 
+If you absolutely need to stay in block mode then you can still snapshot but not export. 
+
+Kasten is actively working on supporting block mode for export, hence this requirement may not be true anymore at the moment you read this document.
+
+
 
 Use the catalog to select fedora-server-small-kio template and create the vm. 
 
