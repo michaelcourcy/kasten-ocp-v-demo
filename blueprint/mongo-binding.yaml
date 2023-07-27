@@ -1,0 +1,29 @@
+apiVersion: config.kio.kasten.io/v1alpha1
+kind: BlueprintBinding
+metadata:
+  name: mongo-binding
+  namespace: kasten-io
+spec:
+  blueprintRef:
+    name: mongo-hooks
+    namespace: kasten-io
+  resources:
+    matchAll:
+    - type:
+        operator: In
+        values:
+        - group: apps
+          resource: deployments
+    - annotations:
+        key: kanister.kasten.io/blueprint
+        operator: DoesNotExist
+    - labels:
+        key: app.kubernetes.io/managed-by
+        operator: In
+        values:
+        - Helm
+    - labels:
+        key: app.kubernetes.io/name
+        operator: In
+        values:
+        - mongodb

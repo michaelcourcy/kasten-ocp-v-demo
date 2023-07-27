@@ -1,0 +1,162 @@
+apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  annotations:
+    defaults.template.kubevirt.io/disk: rootdisk
+    description: Template for Fedora 35 VM or newer. A PVC with the Fedora disk image
+      must be available.
+    iconClass: icon-fedora
+    name.os.template.kubevirt.io/fedora35: Fedora 35 or higher
+    name.os.template.kubevirt.io/fedora36: Fedora 35 or higher
+    openshift.io/display-name: Fedora VM
+    openshift.io/documentation-url: https://github.com/kubevirt/common-templates
+    openshift.io/provider-display-name: Kasten by Veeam
+    openshift.io/support-url: https://github.com/kubevirt/common-templates/issues
+    operator-sdk/primary-resource: openshift-cnv/ssp-kubevirt-hyperconverged
+    operator-sdk/primary-resource-type: SSP.ssp.kubevirt.io
+    tags: hidden,kubevirt,virtualmachine,fedora
+    template.kubevirt.io/containerdisks: |
+      quay.io/containerdisks/fedora:36
+    template.kubevirt.io/editable: |
+      /objects[0].spec.template.spec.domain.cpu.sockets
+      /objects[0].spec.template.spec.domain.cpu.cores
+      /objects[0].spec.template.spec.domain.cpu.threads
+      /objects[0].spec.template.spec.domain.resources.requests.memory
+      /objects[0].spec.template.spec.domain.devices.disks
+      /objects[0].spec.template.spec.volumes
+      /objects[0].spec.template.spec.networks
+    template.kubevirt.io/images: |
+      https://dl.fedoraproject.org/pub/fedora/linux/releases/35/Cloud/x86_64/images/Fedora-Cloud-Base-35-1.2.x86_64.qcow2
+      https://dl.fedoraproject.org/pub/fedora/linux/releases/36/Cloud/x86_64/images/Fedora-Cloud-Base-36-1.5.x86_64.qcow2
+    template.kubevirt.io/provider: Kasten by Veeam
+    template.kubevirt.io/provider-support-level: Community
+    template.kubevirt.io/provider-url: https://www.fedoraproject.org
+    template.kubevirt.io/version: v1alpha1
+    template.openshift.io/bindable: "false"
+  labels:
+    app.kubernetes.io/component: templating
+    app.kubernetes.io/managed-by: ssp-operator
+    app.kubernetes.io/name: common-templates
+    app.kubernetes.io/part-of: hyperconverged-cluster
+    app.kubernetes.io/version: 4.11.4
+    flavor.template.kubevirt.io/small: "true"
+    os.template.kubevirt.io/fedora35: "true"
+    os.template.kubevirt.io/fedora36: "true"
+    template.kubevirt.io/default-os-variant: "true"
+    template.kubevirt.io/type: base
+    template.kubevirt.io/version: v0.23.5
+    workload.template.kubevirt.io/server: "true"
+  name: fedora-server-small-kio
+  namespace: openshift
+  resourceVersion: "1530075714"
+  uid: ed84781d-b99b-4446-91df-e02e10205934
+objects:
+- apiVersion: kubevirt.io/v1
+  kind: VirtualMachine
+  metadata:
+    annotations:
+      vm.kubevirt.io/validations: |
+        [
+          {
+            "name": "minimal-required-memory",
+            "path": "jsonpath::.spec.domain.resources.requests.memory",
+            "rule": "integer",
+            "message": "This VM requires more memory.",
+            "min": 1073741824
+          }
+        ]
+    labels:
+      app: ${NAME}
+      vm.kubevirt.io/template: fedora-server-small
+      vm.kubevirt.io/template.revision: "1"
+      vm.kubevirt.io/template.version: v0.23.5
+    name: ${NAME}
+  spec:
+    dataVolumeTemplates:
+    - apiVersion: cdi.kubevirt.io/v1beta1
+      kind: DataVolume
+      metadata:
+        name: ${NAME}
+      spec:
+        sourceRef:
+          kind: DataSource
+          name: ${DATA_SOURCE_NAME}
+          namespace: ${DATA_SOURCE_NAMESPACE}
+        storage:
+          accessModes:
+          - ReadWriteOnce
+          resources:
+            requests:
+              storage: 30Gi
+          volumeMode: Filesystem
+    running: false
+    template:
+      metadata:
+        annotations:
+          vm.kubevirt.io/flavor: small
+          vm.kubevirt.io/os: fedora
+          vm.kubevirt.io/workload: server
+        labels:
+          kubevirt.io/domain: ${NAME}
+          kubevirt.io/size: small
+      spec:
+        domain:
+          cpu:
+            cores: 1
+            sockets: 1
+            threads: 1
+          devices:
+            disks:
+            - disk:
+                bus: virtio
+              name: rootdisk
+            - disk:
+                bus: virtio
+              name: cloudinitdisk
+            interfaces:
+            - masquerade: {}
+              name: default
+            networkInterfaceMultiqueue: true
+            rng: {}
+          features:
+            smm:
+              enabled: true
+          firmware:
+            bootloader:
+              efi: {}
+          machine:
+            type: pc-q35-rhel8.6.0
+          resources:
+            requests:
+              memory: 2Gi
+        evictionStrategy: LiveMigrate
+        networks:
+        - name: default
+          pod: {}
+        terminationGracePeriodSeconds: 180
+        volumes:
+        - dataVolume:
+            name: ${NAME}
+          name: rootdisk
+        - cloudInitNoCloud:
+            userData: |-
+              #cloud-config
+              user: fedora
+              password: ${CLOUD_USER_PASSWORD}
+              chpasswd: { expire: False }
+          name: cloudinitdisk
+parameters:
+- description: VM name
+  from: fedora-[a-z0-9]{16}
+  generate: expression
+  name: NAME
+- description: Name of the DataSource to clone
+  name: DATA_SOURCE_NAME
+  value: fedora
+- description: Namespace of the DataSource
+  name: DATA_SOURCE_NAMESPACE
+  value: openshift-virtualization-os-images
+- description: Randomized password for the cloud-init user fedora
+  from: '[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}'
+  generate: expression
+  name: CLOUD_USER_PASSWORD

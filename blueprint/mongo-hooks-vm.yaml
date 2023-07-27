@@ -1,0 +1,53 @@
+apiVersion: cr.kanister.io/v1alpha1
+kind: Blueprint
+metadata:  
+  name: mongo-hooks-vm
+  namespace: kasten-io  
+actions:
+  backupPosthook:
+    phases:
+    - func: KubeTask
+      name: unlockMongo
+      objects:
+        sshSecret:
+          kind: Secret
+          name: mongo-vm-ssh
+          namespace: '{{ .Object.metadata.namespace}}'
+      args:
+        namespace: '{{ .Object.metadata.namespace}}'
+        image: kroniak/ssh-client
+        command:
+        - bash
+        - -o
+        - errexit
+        - -o
+        - pipefail
+        - -c
+        - |
+          echo '{{ index .Phases.unlockMongo.Secrets.sshSecret.Data "id_rsa" | toString }}' > id_rsa    
+          chmod 600 id_rsa      
+          ssh -o StrictHostKeyChecking=no -i id_rsa fedora@fedora-vm-ssh 'mongo --eval="db.fsyncUnlock()"'
+  backupPrehook:
+    phases:
+    - func: KubeTask
+      name: lockMongo
+      objects:
+        sshSecret:
+          kind: Secret
+          name: mongo-vm-ssh
+          namespace: '{{ .Object.metadata.namespace}}'
+      args:
+        namespace: '{{ .Object.metadata.namespace}}'
+        image: kroniak/ssh-client
+        command:
+        - bash
+        - -o
+        - errexit
+        - -o
+        - pipefail
+        - -c
+        - |
+          echo '{{ index .Phases.lockMongo.Secrets.sshSecret.Data "id_rsa" | toString }}' > id_rsa  
+          chmod 600 id_rsa  
+          ssh -o StrictHostKeyChecking=no -i id_rsa fedora@fedora-vm-ssh 'mongo --eval="db.fsyncLock()"'
+

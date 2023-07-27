@@ -49,20 +49,25 @@ Then we proceed the migration with a transformation on the route :
 $1.apps.bm2.url.com
 ```
 
-Video : 
+Video : https://www.youtube.com/watch?v=_-OrgZOIuYQ
 
-We add a blueprint so that kasten now take also a dump of the database and restore the dump at restore.
+We add a blueprint so that kasten now make sure to call fsyncLock and fsyncUnlock before and after the snapshot.
 
 ```
-oc create -f blueprint/mongodb-bp.yaml 
-oc create -f blueprint/mongodb-bp-binding.yaml 
+oc create -f blueprint/mongo-hooks.yaml 
+oc create -f blueprint/mongo-binding.yaml 
 ```
 
-Video : 
+You can follow up the execution of the bleuprint with this command (ggrep stand for GNU grep): 
+```
+kubectl logs -n kasten-io -l component=kanister --tail=10000 -f | ggrep '"LogKind":"datapath"' | ggrep -o -P '(?<="Pod_Out":").*?(?=",)'
+```
+
+Video : https://www.youtube.com/watch?v=codch9oG9GI
 
 ## Scenario "VM Migration" 
 
-We're going to replace/mix pod by/with VMs in order to execute a VM Micgration scenario between openshift cluster.
+We're going to replace/mix pod by/with VMs in order to execute a VM Migration scenario between openshift cluster.
 
 ![Vm Migration](./images/vm-migration.png)
 
@@ -74,8 +79,6 @@ Having volume mode on filesystem mode is a requirement for Kasten to be able to 
 If you absolutely need to stay in block mode then you can still snapshot but not export. 
 
 Kasten is actively working on supporting block mode for export, hence this requirement may not be true anymore at the moment you read this document.
-
-
 
 Use the catalog to select fedora-server-small-kio template and create the vm. 
 
@@ -116,7 +119,7 @@ use admin
 db.createUser(
    {
      user: "root",
-     pwd: "<Password>", // or cleartext password
+     pwd: "Qj2XjXBEki", // or cleartext password
      roles: [ 
        { role: "userAdminAnyDatabase", db: "admin" },
        { role: "readWriteAnyDatabase", db: "admin" } 
@@ -125,7 +128,12 @@ db.createUser(
  )
 ```
 
-edit /etc/mongod.conf and change 
+edit /etc/mongod.conf 
+```
+sudo vi /etc/mongod.conf
+```
+
+and change 
 ```
 net:
   port: 27017
@@ -169,16 +177,14 @@ oc edit deploy pacman
 ```
 change env MONGO_SERVICE_HOST by fedora-vm-mongodb
 
-
-
-Scale down the mongodb pod 
+delete the mongodb deployment
 ```
-oc scale deploy pacman-mongodb --replicas=0
+oc delete deploy pacman-mongodb
 ```
 
 Connect to the pacman app do a game and check the database on the vm.
 
-Video : 
+Video : https://www.youtube.com/watch?v=AKp_6bI_RFk
 
 ## Create a Windows VM to reach the pacman dashboard
 
@@ -198,42 +204,88 @@ Select the windows2k16-server-medium-kio template in the catalog and create the 
 Connect to the machine 
 
 ```
-virtctl console $(oc get vm | grep win |awk '{print $1}')
+virtctl vnc $(oc get vm | grep win |awk '{print $1}')
 ```
 
 Notes: Mac os user will have to create a remote-viewer executable script on their latop see instructions [here](./remote-viewer-macos.md).
 
 Install windows. On the machine open edge and connect to the pacman dashboard 
 
-Video : 
+Video : https://www.youtube.com/watch?v=7yUBs7NLzM4
 
 ## Adapt the blueprint for the VM 
 
-Just edit the blueprint to change the endpoint for mongo dump and test a backup.
+The new  blueprint will call fsyncLock and fsyncUnlock through ssh. 
 
-Video : 
+### install ssh key 
 
-## Backup the namespace and restore it on bm2 
+Create a ssh key 
+```
+mkdir ssh && ssh
+ssh-keygen -t rsa -f id_rsa
+oc create secret generic mongo-vm-ssh-pub --from-file=id_rsa.pub
+oc create secret generic mongo-vm-ssh --from-file=id_rsa
+```
 
-Migrate the VM app on the bm2 cluster. 
+Change the vm configuration to include this pubkey this should be at the same level 
+than `domain`
+```
+  accessCredentials:
+  - sshPublicKey:
+      source:
+        secret:
+          secretName: mongo-vm-ssh-pub
+      propagationMethod:
+        qemuGuestAgent:
+          users:
+          - "fedora"
+```
 
-Video :
+And delete the VMI it will recreate. 
+
+Expose the ssh service 
+```
+virtctl expose vm $(oc get vm --no-headers|grep fedora|awk '{print $1}') --port=22 --name=fedora-vm-ssh
+```
+
+Note: there is a bug with the creation of the ssh key for this version of fedora you'll have to do it yourself 
+https://bugzilla.redhat.com/show_bug.cgi?id=1917024
+
+Go inside the vm with vnc console 
+```
+virtctl console $(oc get vm | grep fedora |awk '{print $1}')
+echo '<id_rsa_pub>' >> ~/.ssh/authorized_keys
+```
+
+### Bind the blueprint to the vm
+
+```
+oc create -f blueprint/mongo-hooks-vm.yaml 
+oc label vm <fedora-vm> usage=mongodb
+oc create -f mongo-binding-vm.yaml
+oc annotate vm <fedora-vm-name> kanister.kasten.io/blueprint='mongo-hooks-vm'
+```
+Relaunch a backup and check the blueprint is executed with this command
+
+```
+while true; do oc logs -f -l createdBy=kanister; sleep 2; done
+```
+
+Video : https://www.youtube.com/watch?v=jmVzNkFiWRc
+
+## Restore the whole application on bm2 
+
+Just replay the import policy and check everything is working the same way by connecting to the pacman dashboard 
+using the windows machine.
+
+Video : https://www.youtube.com/watch?v=jCZKeXxvsiM
 
 ## Misceleanous 
 
 - clone in another namespace 
 - restore on another cluster in another namespace 
-- evaluate "incrementality" for VM Backup 
 
 ## Limitation 
 
 - Support for block mode on VM should be available at the end of the year
-- Complete gitops install does not work if we want complete openshift authentication, we're working on it through a more "operator" oriented install 
-- Kubevirt does not support notion of backup agent controlled by the hypervisor, we're working on creating hooks when using freeze feature.
-
-
-
-
-
-
-
+- Complete gitops install does not work if we want complete openshift authentication, we're working on it ... 
